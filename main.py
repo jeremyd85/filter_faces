@@ -1,53 +1,83 @@
 import numpy as np
 import cv2
-import sys
+
 import os
-import time
-from imutils.video import VideoStream
-from imutils.video import FPS
-import imutils
+from cv_image import Image
+from cv_window import Window
 
-CLASSIFIER = '/home/jeremy/code/C++Projects/opencv/data/haarcascades/haarcascade_frontalface_default.xml'
-FILEPATH = 'Jeremy'
+import shutil
 
 
-def get_image_list(dir_name):
-    if os.path.exists(dir_name):
-        image_list = os.listdir(dir_name)
-        return [os.path.join(dir_name, f) for f in image_list]
-    else:
-        return []
+ME_FILEPATH = 'jesse'
+KNOWN_PATH = 'known_faces'
+
+
+class ImageFilter:
+
+    def __init__(self, name):
+        self.curr_image = Image()
+        self.name = name
+        self.input_path = name
+        self.image_list = self.get_image_list()
+        self.output_path = os.path.join(KNOWN_PATH, name)
+        self.img_count = 0
+        self.scale = 0.25
+        self.window = None
+        self._setup_dirs()
+
+    def start_window(self):
+        self.window = Window(self.name)
+        self.window.mouse_event(self.crop_handler)
+        self._update_window()
+        self.window.close_after_key(27)
+
+    def _setup_dirs(self):
+        if not os.path.exists(KNOWN_PATH):
+            os.mkdir(KNOWN_PATH)
+        if os.path.exists(self.output_path):
+            shutil.rmtree(self.output_path)
+            os.mkdir(self.output_path)
+
+    def crop_handler(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDBLCLK:
+            x = x / self.scale
+            y = y / self.scale
+            face_points = self.curr_image.get_face_at_point((x, y))
+            if face_points:
+                face_img = self.curr_image.crop(face_points[0], face_points[1])
+                output_file = os.path.join(self.output_path, '{0}{1}.png'.format(self.name, self.img_count))
+                face_img.create_image(output_file)
+            self.img_count += 1
+            self._update_window()
+
+    def get_image_list(self):
+        if os.path.exists(self.input_path):
+            image_list = os.listdir(self.input_path)
+            return [os.path.join(self.input_path, f) for f in image_list]
+        else:
+            return []
+
+    def _update_window(self):
+        if self.img_count == len(self.image_list):
+            self.window.close()
+        self.curr_image = Image(file_path=self.image_list[self.img_count])
+        display_img = Image(cv_image=self.curr_image.img_copy)
+        faces = display_img.get_faces()
+        display_img = display_img.scale(self.scale)
+        for [point1, point2] in faces:
+            point1 = (int(point1[0] * self.scale), int(point1[1] * self.scale))
+            point2 = (int(point2[0] * self.scale), int(point2[1] * self.scale))
+            display_img = display_img.rectangle(point1, point2)
+        self.window.update_image(display_img)
+
+
 
 
 def main():
+    img_filter = ImageFilter(ME_FILEPATH)
+    img_filter.start_window()
 
-    face_cascade = cv2.CascadeClassifier(CLASSIFIER)
-    image_list = get_image_list(FILEPATH)
-    for i in image_list[0:1]:
-        cv_img = cv2.imread(i)
-        cv_grayscale_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-
-        faces = face_cascade.detectMultiScale(
-            image=cv_grayscale_img,
-            scaleFactor=1.3,
-            minNeighbors=1,
-            minSize=(30, 30),
-            flags=cv2.CASCADE_SCALE_IMAGE
-        )
-        for (x, y, w, h) in faces:
-            cv2.rectangle(cv_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        cv2.imshow(i, cv_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        print(faces)
-
-main()
 
 
 
-# img_name = 'Jeremy/032.jpg'
-# img = cv2.imread(img_name, 0)
-# cv2.imshow(img_name, img)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+main()
