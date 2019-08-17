@@ -1,3 +1,4 @@
 venv/
 jeremy/
 known_faces/
+__pycache__/
