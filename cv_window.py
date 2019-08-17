@@ -14,6 +14,7 @@ class Window:
     def update_image(self, image):
         self.frame = image
         cv2.imshow(self.name, image.img)
+        print(self.frame)
 
     def close_after_key(self, key):
         if cv2.waitKeyEx(0) == key:

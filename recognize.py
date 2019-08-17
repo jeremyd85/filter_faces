@@ -29,13 +29,11 @@ class Recognizer:
         return self.encodings
 
 
-def main():
-    win = Window('Recognize', video=True)
-    win.close_after_key(27)
-    while not win.close:
-        win.update_image(win.get_frame())
+win = Window('Recognize', video=True)
+win.close_after_key(27)
 
-main()
+win.update_image(win.get_frame())
+
 
 
 
