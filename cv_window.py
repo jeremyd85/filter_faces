@@ -1,5 +1,4 @@
 import cv2
-import handlers
 from cv_image import Image
 
 
@@ -12,13 +11,14 @@ class Window:
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
 
     def update_image(self, image):
-        self.frame = image
         cv2.imshow(self.name, image.img)
-        print(self.frame)
 
-    def close_after_key(self, key):
-        if cv2.waitKeyEx(0) == key:
+    def close_after_key(self, key, stay_open=False):
+        time_wait = 0 if stay_open else 1
+        if cv2.waitKeyEx(time_wait) == key:
             self.close()
+            return True
+        return False
 
     def close(self):
         if self.video_capture:

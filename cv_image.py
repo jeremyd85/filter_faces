@@ -3,6 +3,7 @@ import copy
 
 CLASSIFIER = '/home/jeremy/code/C++Projects/opencv/data/haarcascades/haarcascade_frontalface_default.xml'
 
+
 class Image():
 
     def __init__(self, file_path='', cv_image=None):
@@ -44,7 +45,7 @@ class Image():
         return []
 
     def rectangle(self, point1, point2):
-        return Image(cv_image=cv2.rectangle(self.img_copy, point1, point2, (0, 255, 0), 4))
+        return Image(cv_image=cv2.rectangle(self.img_copy, point1, point2, (0, 0, 255), 4))
 
     def crop(self, point1, point2):
         cropped_img = self.img[point1[1]:point2[1], point1[0]:point2[0]]
@@ -54,6 +55,12 @@ class Image():
         self.file_path = path
         print(path)
         cv2.imwrite(path, self.img)
+
+    def to_rgb(self):
+        return Image(cv_image=self.img[:, :, ::-1])
+
+    def vertical_flip(self):
+        return Image(cv_image=cv2.flip(self.img, 1))
 
     @property
     def img_copy(self):
