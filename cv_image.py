@@ -1,5 +1,6 @@
 import cv2
 import copy
+from PyQt5.QtGui import QImage, QPixmap
 
 CLASSIFIER = '/home/jeremy/code/C++Projects/opencv/data/haarcascades/haarcascade_frontalface_default.xml'
 
@@ -61,6 +62,10 @@ class Image():
 
     def vertical_flip(self):
         return Image(cv_image=cv2.flip(self.img, 1))
+
+    def get_pixmap(self):
+        image = QImage(self.img, self.width, self.height, 3*self.width, QImage.Format_RGB888)
+        return QPixmap(image)
 
     @property
     def img_copy(self):
