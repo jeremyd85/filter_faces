@@ -45,9 +45,10 @@ class Recognizer:
             img.create_image(pic_path)
         return Recognizer(name)
 
+
 class RecognizeFaces():
 
-    def __init__(self, recognizers=[], scale=0.4, frame_count=5):
+    def __init__(self, recognizers=[], scale=0.4, frame_count=5, sign_in=False):
         self.win = None
         self.recognizers = recognizers
         self.scale = scale
@@ -57,6 +58,7 @@ class RecognizeFaces():
         self.known_face_names = []
         self.face_locations = []
         self.face_names = []
+        self.sign_in = sign_in
 
     def is_rec(self, name):
         for r in self.recognizers:
@@ -67,8 +69,6 @@ class RecognizeFaces():
     def setup(self):
         known_faces_list = os.listdir(Recognizer.KNOWN_FACES)
         for face_dir in known_faces_list:
-
-
             self.recognizers.append(Recognizer(face_dir))
             self.known_face_names.append(face_dir)
         for rec in self.recognizers:
@@ -151,18 +151,31 @@ class RecognizeFaces():
             cv2.putText(frame.img, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
         return frame, faces
 
-    def start_window(self):
+    def start_window(self, update=True):
         self.win = Window('Recognize', video=True)
         self.win.mouse_event(self.add_face)
-        while not self.win.closed:
-            if self.frame_count == self.max_frame_count:
-                self.find_and_label_faces()
-                self.frame_count = 0
-            frame, faces = self.draw_and_get_rectangles()
-            self.win.update_image(frame)
-            if self.win.close_after_key(27):
-                break
-            self.frame_count += 1
+        if update:
+            while not self.win.closed:
+                if self.frame_count == self.max_frame_count:
+                    self.find_and_label_faces()
+                    self.frame_count = 0
+                frame, faces = self.draw_and_get_rectangles()
+                self.win.update_image(frame)
+                if self.win.close_after_key(27):
+                    break
+                self.frame_count += 1
+
+    def update(self):
+        if self.win.closed:
+            return [] []
+        if self.frame_count == self.max_frame_count:
+            self.find_and_label_faces()
+            self.frame_count = 0
+        frame, faces = self.draw_and_get_rectangles()
+        self.win.update_image(frame)
+        if self.win.close_after_key(27):
+            return [] []
+        self.frame_count += 1
 
 
 def recognize(process_frame_count=2):
