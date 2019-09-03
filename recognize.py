@@ -4,13 +4,14 @@ from cv_window import Window
 from cv_image import Image
 import cv2
 import numpy as np
+import csv
 
 
 class Recognizer:
 
     KNOWN_FACES = 'known_faces'
 
-    def __init__(self, name, max_images=10):
+    def __init__(self, name='', max_images=10):
         self.name = name
         self.known_path = os.path.join(Recognizer.KNOWN_FACES, name)
         self.max_images = max_images
@@ -31,71 +32,143 @@ class Recognizer:
                 self.encodings.append(face_recognition.face_encodings(loaded_image)[0])
         return self.encodings
 
+    @staticmethod
+    def make_recognizer(img, name):
+        name = name.lower()
+        known_list = os.listdir(Recognizer.KNOWN_FACES)
+        if name in known_list:
+            return
+        else:
+            base_path = os.path.join(Recognizer.KNOWN_FACES, name)
+            os.mkdir(base_path)
+            pic_path = os.path.join(base_path, "{0}0.png".format(name))
+            img.create_image(pic_path)
+        return Recognizer(name)
 
-def recognize(process_frame_count=2):
-    scale = .40
-    frame_count = process_frame_count
-    known_face_encodings = []
-    recognizers = []
-    known_face_names = []
-    known_faces_list = os.listdir(Recognizer.KNOWN_FACES)
-    for face_dir in known_faces_list:
-        recognizers.append(Recognizer(face_dir))
-        known_face_names.append(face_dir)
-    for rec in recognizers:
-        known_face_encodings.append(rec.get_encodings()[0])
+class RecognizeFaces():
 
-    win = Window('Recognize', video=True)
-    while not win.closed:
-        frame = win.get_frame()
+    def __init__(self, recognizers=[], scale=0.4, frame_count=5):
+        self.win = None
+        self.recognizers = recognizers
+        self.scale = scale
+        self.max_frame_count = frame_count
+        self.frame_count = frame_count
+        self.known_face_encodings = []
+        self.known_face_names = []
+        self.face_locations = []
+        self.face_names = []
+
+    def is_rec(self, name):
+        for r in self.recognizers:
+            if r.name == name:
+                return True
+        return False
+
+    def setup(self):
+        known_faces_list = os.listdir(Recognizer.KNOWN_FACES)
+        for face_dir in known_faces_list:
+
+
+            self.recognizers.append(Recognizer(face_dir))
+            self.known_face_names.append(face_dir)
+        for rec in self.recognizers:
+            self.known_face_encodings.append(rec.get_encodings()[0])
+
+    def add_face(self, event, x, y, flags, param):
+
+        if event == cv2.EVENT_LBUTTONDBLCLK:
+            faces_and_names, frame = self.find_and_label_faces()
+            for (top, right, bottom, left), n in faces_and_names:
+                top = int(top * (1 / self.scale))
+                right = int(right * (1 / self.scale))
+                bottom = int(bottom * (1 / self.scale))
+                left = int(left * (1 / self.scale))
+                p1 = (int(left), int(top))
+                p2 = (int(right), int(bottom))
+                if y > top and y < bottom and x > left and x < right:
+                    img = frame.crop(p1, p2)
+                    r = input("Do you wan to enter this face? (y/n): ")
+                    if r.lower() == "y":
+                        first_name = input("First Name: ")
+                        last_name = input("Last Name: ")
+                        email = input("Email: ")
+                        with open('club_members.csv', mode='w') as csv_file:
+                            member_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+                            member_writer.writerow([first_name, last_name, email])
+                        self.recognizers.append(Recognizer.make_recognizer(img, first_name))
+                        #self.setup()
+                else:
+                    pass
+
+    def find_and_label_faces(self):
+        frame = self.win.get_frame()
         # Resize frame of video to 1/4 size for faster face recognition processing
-        small_frame = frame.scale(scale)
+        small_frame = frame.scale(self.scale)
         # Convert the image from BGR color (which OpenCV uses) to RGB color (which face_recognition uses)
         rgb_small_frame = small_frame.to_rgb()
+        # Find all the faces and face encodings in the current frame of video
+        self.face_locations = face_recognition.face_locations(rgb_small_frame.img)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame.img, self.face_locations)
 
-        # Only process every other frame of video to save time
-        if frame_count == process_frame_count:
-            # Find all the faces and face encodings in the current frame of video
-            face_locations = face_recognition.face_locations(rgb_small_frame.img)
-            face_encodings = face_recognition.face_encodings(rgb_small_frame.img, face_locations)
+        self.face_names = []
+        for face_encoding in face_encodings:
+            # See if the face is a match for the known face(s)
+            matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
+            name = "who dis?"
 
-            face_names = []
-            for face_encoding in face_encodings:
-                # See if the face is a match for the known face(s)
-                matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-                name = "who dis?"
+            # Or instead, use the known face with the smallest distance to the new face
+            face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
+            if matches[best_match_index]:
+                name = self.known_face_names[best_match_index]
 
-                # Or instead, use the known face with the smallest distance to the new face
-                face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-                best_match_index = np.argmin(face_distances)
-                if matches[best_match_index]:
-                    name = known_face_names[best_match_index]
+            self.face_names.append(name)
+        self.frame_count = 0
 
-                face_names.append(name)
-            frame_count = 0
+        return zip(self.face_locations, self.face_names), frame
 
-        frame_count += 1
-
-        # Display the results
-        for (top, right, bottom, left), name in zip(face_locations, face_names):
+    def draw_and_get_rectangles(self):
+        og_frame = self.win.get_frame()
+        frame = Image(cv_image=og_frame.img_copy)
+        faces = []
+        for (top, right, bottom, left), name in zip(self.face_locations, self.face_names):
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            top = int(top * 1/scale)
-            right = int(right * 1/scale)
-            bottom = int(bottom * 1/scale)
-            left = int(left * 1/scale)
+            top = int(top * 1/self.scale)
+            right = int(right * 1/self.scale)
+            bottom = int(bottom * 1/self.scale)
+            left = int(left * 1/self.scale)
             p1 = (int(left), int(top))
             p2 = (int(right), int(bottom))
             # Draw a box around the face
             frame = frame.rectangle(p1, p2)
+            self.win.update_image(frame)
+            faces.append(og_frame.crop(p1, p2))
 
             # Draw a label with a name below the face
             cv2.rectangle(frame.img, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
             font = cv2.FONT_HERSHEY_DUPLEX
             cv2.putText(frame.img, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
+        return frame, faces
 
-        win.update_image(frame)
-        if win.close_after_key(27):
-            break
+    def start_window(self):
+        self.win = Window('Recognize', video=True)
+        self.win.mouse_event(self.add_face)
+        while not self.win.closed:
+            if self.frame_count == self.max_frame_count:
+                self.find_and_label_faces()
+                self.frame_count = 0
+            frame, faces = self.draw_and_get_rectangles()
+            self.win.update_image(frame)
+            if self.win.close_after_key(27):
+                break
+            self.frame_count += 1
+
+
+def recognize(process_frame_count=2):
+   r = RecognizeFaces(frame_count=process_frame_count)
+   r.setup()
+   r.start_window()
 
 
 
