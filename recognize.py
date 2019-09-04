@@ -45,9 +45,10 @@ class Recognizer:
             img.create_image(pic_path)
         return Recognizer(name)
 
+
 class RecognizeFaces():
 
-    def __init__(self, recognizers=[], scale=0.4, frame_count=5):
+    def __init__(self, recognizers=[], scale=0.4, frame_count=5, sign_in=False):
         self.win = None
         self.recognizers = recognizers
         self.scale = scale
@@ -57,6 +58,8 @@ class RecognizeFaces():
         self.known_face_names = []
         self.face_locations = []
         self.face_names = []
+        self.sign_in = sign_in
+        self.frame = None
 
     def is_rec(self, name):
         for r in self.recognizers:
@@ -65,10 +68,11 @@ class RecognizeFaces():
         return False
 
     def setup(self):
+        self.recognizers = []
+        self.known_face_names = []
+        self.known_face_encodings = []
         known_faces_list = os.listdir(Recognizer.KNOWN_FACES)
         for face_dir in known_faces_list:
-
-
             self.recognizers.append(Recognizer(face_dir))
             self.known_face_names.append(face_dir)
         for rec in self.recognizers:
@@ -78,6 +82,7 @@ class RecognizeFaces():
 
         if event == cv2.EVENT_LBUTTONDBLCLK:
             faces_and_names, frame = self.find_and_label_faces()
+            frame = self.win.get_frame()
             for (top, right, bottom, left), n in faces_and_names:
                 top = int(top * (1 / self.scale))
                 right = int(right * (1 / self.scale))
@@ -89,15 +94,17 @@ class RecognizeFaces():
                     img = frame.crop(p1, p2)
                     r = input("Do you wan to enter this face? (y/n): ")
                     if r.lower() == "y":
+                        email = input("Email: ")
+                        unique_member = email.split("@")[0]
+                        os.makedirs(os.path.join(Recognizer.KNOWN_FACES, unique_member))
+                        img.create_image(os.path.join(Recognizer.KNOWN_FACES, unique_member,
+                                                      "{0}.png".format(unique_member)))
                         first_name = input("First Name: ")
                         last_name = input("Last Name: ")
-                        email = input("Email: ")
-                        with open('club_members.csv', mode='w') as csv_file:
-                            member_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
+                        with open('club_members.csv', mode='a+') as csv_file:
+                            member_writer = csv.writer(csv_file)
                             member_writer.writerow([first_name, last_name, email])
-                        self.recognizers.append(Recognizer.make_recognizer(img, first_name))
-                        #self.setup()
+                        self.setup()
                 else:
                     pass
 
@@ -128,41 +135,45 @@ class RecognizeFaces():
 
         return zip(self.face_locations, self.face_names), frame
 
+    def draw_rectangle_face_box(self, point1, point2, name, color):
+        # Draw a box around the face
+        self.frame = self.frame.rectangle(point1, point2, color[::-1])
+        self.win.update_image(self.frame)
+
+        # Draw a label with a name below the face
+        cv2.rectangle(self.frame.img, (point1[0], point2[1] - 35), (point2[0], point2[1]), color[::-1], cv2.FILLED)
+        font = cv2.FONT_HERSHEY_DUPLEX
+        cv2.putText(self.frame.img, name, (point1[0] + 6, point2[1] - 6), font, 1.0, (255, 255, 255), 1)
+
     def draw_and_get_rectangles(self):
-        og_frame = self.win.get_frame()
-        frame = Image(cv_image=og_frame.img_copy)
-        faces = []
+        self.frame = self.win.get_frame()
+        color = ()
         for (top, right, bottom, left), name in zip(self.face_locations, self.face_names):
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            top = int(top * 1/self.scale)
-            right = int(right * 1/self.scale)
-            bottom = int(bottom * 1/self.scale)
-            left = int(left * 1/self.scale)
-            p1 = (int(left), int(top))
-            p2 = (int(right), int(bottom))
-            # Draw a box around the face
-            frame = frame.rectangle(p1, p2)
-            self.win.update_image(frame)
-            faces.append(og_frame.crop(p1, p2))
+            p1 = (int(left/self.scale), int(top/self.scale))
+            p2 = (int(right/self.scale), int(bottom/self.scale))
+            if self.green_condition(name):
+                color = (0, 255, 0)
+            else:
+                color = (255, 0, 0)
+            self.draw_rectangle_face_box(p1, p2, name, color)
 
-            # Draw a label with a name below the face
-            cv2.rectangle(frame.img, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
-            cv2.putText(frame.img, name, (left + 6, bottom - 6), font, 1.0, (255, 255, 255), 1)
-        return frame, faces
-
-    def start_window(self):
+    def start_window(self, update=True):
         self.win = Window('Recognize', video=True)
         self.win.mouse_event(self.add_face)
-        while not self.win.closed:
-            if self.frame_count == self.max_frame_count:
-                self.find_and_label_faces()
-                self.frame_count = 0
-            frame, faces = self.draw_and_get_rectangles()
-            self.win.update_image(frame)
-            if self.win.close_after_key(27):
-                break
-            self.frame_count += 1
+        if update:
+            while not self.win.closed:
+                if self.frame_count == self.max_frame_count:
+                    self.find_and_label_faces()
+                    self.frame_count = 0
+                self.draw_and_get_rectangles()
+                self.win.update_image(self.frame)
+                if self.win.close_after_key(27):
+                    break
+                self.frame_count += 1
+
+    def green_condition(self, name):
+        return False
 
 
 def recognize(process_frame_count=2):
