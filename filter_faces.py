@@ -16,7 +16,7 @@ if __name__ == '__main__':
     elif args.recognize:
         recognize.recognize(args.interval)
     elif args.sign_in:
-        sign_in.sign_in_csv(args.interval, args.sign_in)
+        sign_in.sign_in(args.interval, args.sign_in)
 
 
 

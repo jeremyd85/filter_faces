@@ -45,8 +45,8 @@ class Image():
                 return [(x1, y1), (x2, y2)]
         return []
 
-    def rectangle(self, point1, point2):
-        return Image(cv_image=cv2.rectangle(self.img_copy, point1, point2, (0, 0, 255), 4))
+    def rectangle(self, point1, point2, color=(0, 0, 255)):
+        return Image(cv_image=cv2.rectangle(self.img_copy, point1, point2, color, 2))
 
     def crop(self, point1, point2):
         cropped_img = self.img[point1[1]:point2[1], point1[0]:point2[0]]
