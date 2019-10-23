@@ -5,6 +5,7 @@ from cv_image import Image
 import cv2
 import numpy as np
 import csv
+import pyttsx3
 
 
 class Recognizer:
@@ -101,7 +102,7 @@ class RecognizeFaces():
                                                       "{0}.png".format(unique_member)))
                         first_name = input("First Name: ")
                         last_name = input("Last Name: ")
-                        with open('club_members.csv', mode='a+') as csv_file:
+                        with open('club_members.csv', mode='a') as csv_file:
                             member_writer = csv.writer(csv_file)
                             member_writer.writerow([first_name, last_name, email])
                         self.setup()
@@ -138,12 +139,12 @@ class RecognizeFaces():
     def draw_rectangle_face_box(self, point1, point2, name, color):
         # Draw a box around the face
         self.frame = self.frame.rectangle(point1, point2, color[::-1])
-        self.win.update_image(self.frame)
 
         # Draw a label with a name below the face
         cv2.rectangle(self.frame.img, (point1[0], point2[1] - 35), (point2[0], point2[1]), color[::-1], cv2.FILLED)
         font = cv2.FONT_HERSHEY_DUPLEX
         cv2.putText(self.frame.img, name, (point1[0] + 6, point2[1] - 6), font, 1.0, (255, 255, 255), 1)
+        self.win.update_image(self.frame)
 
     def draw_and_get_rectangles(self):
         self.frame = self.win.get_frame()

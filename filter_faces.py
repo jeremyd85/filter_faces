@@ -14,9 +14,9 @@ if __name__ == '__main__':
     if args.add_faces:
         filter.filter_dir(args.add_faces)
     elif args.recognize:
-        recognize.recognize(args.interval)
+        recognize.recognize(args.interval if args.interval else 5)
     elif args.sign_in:
-        sign_in.sign_in(args.interval, args.sign_in)
+        sign_in.sign_in(args.interval if args.interval else 5, args.sign_in)
 
 
 

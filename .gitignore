@@ -3,3 +3,4 @@ training_data/
 known_faces/
 __pycache__/
 .idea
+sigai_signin/

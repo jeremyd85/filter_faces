@@ -23,7 +23,7 @@ class SigninRecognizer(RecognizeFaces):
         if email in self.members_present:
             return True
         else:
-            with open(self.sign_in_path, "a+") as csv_file:
+            with open(self.sign_in_path, "a") as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow([str(email), True])
             self.members_present = self._get_members()
@@ -37,7 +37,7 @@ class SigninRecognizer(RecognizeFaces):
         now = datetime.datetime.now()
         cur_date = now.strftime('%Y-%m-%d')
         for s in sign_ins:
-            match = re.match(r"(\d-\d-\d)(\.csv)", s)
+            match = re.match(r"(\d+-\d+-\d+)(\.csv)", s)
             if match and cur_date == match.group(1):
                 return os.path.join(self.file_path, s)
 
@@ -53,7 +53,7 @@ class SigninRecognizer(RecognizeFaces):
             return True
 
 
-def sign_in(process_frame_count=2, sign_in_dir=""):
+def sign_in(process_frame_count=5, sign_in_dir=""):
     r = SigninRecognizer(frame_count=process_frame_count, file_path=sign_in_dir)
     r.setup()
     r.start_window()
