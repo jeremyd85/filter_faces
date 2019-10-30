@@ -4,3 +4,5 @@ known_faces/
 __pycache__/
 .idea
 sigai_signin/
+club_members.csv
+
